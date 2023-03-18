@@ -68,16 +68,21 @@ const createToken = (userId) => {
 };
 
 const getDashboardPage = async (req, res) => {
-  const photos= await Photo.find({user: res.locals.user._id});
+  const photos = await Photo.find({ user: res.locals.user._id });
+  const user = await User.findById({ _id: res.locals.user._id }).populate([
+    "followers",
+    "followings",
+  ]);
   res.render("dashboard", {
     link: "dashboard",
     photos,
+    user,
   });
 };
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({_id:{$ne:res.locals.user._id}}); //find methodu ile tüm kullanıcıları çekiyoruz. _id:{$ne:res.locals.user._id} ile de kendimizi çıkartıyoruz. Çünkü kendimizi görmek istemiyoruz.
+    const users = await User.find({ _id: { $ne: res.locals.user._id } }); //find methodu ile tüm kullanıcıları çekiyoruz. _id:{$ne:res.locals.user._id} ile de kendimizi çıkartıyoruz. Çünkü kendimizi görmek istemiyoruz.
     res.status(200).render("users", {
       users,
       link: "users",
@@ -92,12 +97,19 @@ const getAllUsers = async (req, res) => {
 
 const getAUser = async (req, res) => {
   try {
-    const user = await User.findById({ _id: req.params.id })
-    const photos = await Photo.find({user:res.locals.user._id})
-    res.status(200).render("user", {    //render methodu ile user.ejs dosyasını gönderiyoruz.
+    const user = await User.findById({ _id: req.params.id });
+
+    const inFollowers = user.followers.some((follower) => {
+      return follower.equals(res.locals.user._id);
+    });
+
+    const photos = await Photo.find({ user: user._id });
+    res.status(200).render("user", {
+      //render methodu ile user.ejs dosyasını gönderiyoruz.
       user,
       photos,
-      link: "user", 
+      link: "user",
+      inFollowers,
     });
   } catch (error) {
     res.status(500).json({
@@ -106,4 +118,62 @@ const getAUser = async (req, res) => {
     });
   }
 };
-export { createUser, loginUser, getDashboardPage,getAllUsers,getAUser };
+
+const follow = async (req, res) => {
+  try {
+    let user = await User.findByIdAndUpdate(
+      { _id: req.params.id }, //takip edilecek kullanıcıyı buluyoruz.
+      {
+        $push: { followers: res.locals.user._id }, //followers arrayine ekliyoruz.
+      },
+      { new: true } //new:true ile de güncellenmiş veriyi geri döndürüyoruz.
+    );
+    user = await User.findByIdAndUpdate(
+      { _id: res.locals.user._id }, //kendimizi buluyoruz.
+      {
+        $push: { followings: req.params.id }, //followings arrayine ekliyoruz.
+      },
+      { new: true } //new:true ile de güncellenmiş veriyi geri döndürüyoruz.
+    );
+    res.status(200).redirect(`/users/${req.params.id}`);
+  } catch (error) {
+    res.status(500).json({
+      succeded: false,
+      error,
+    });
+  }
+};
+const unfollow = async (req, res) => {
+  try {
+    let user = await User.findByIdAndUpdate(
+      { _id: req.params.id }, //takip edilecek kullanıcıyı buluyoruz.
+      {
+        $pull: { followers: res.locals.user._id }, //followers arrayine ekliyoruz.
+      },
+      { new: true } //new:true ile de güncellenmiş veriyi geri döndürüyoruz.
+    );
+    user = await User.findByIdAndUpdate(
+      { _id: res.locals.user._id }, //kendimizi buluyoruz.
+      {
+        $pull: { followings: req.params.id }, //followings arrayine ekliyoruz.
+      },
+      { new: true } //new:true ile de güncellenmiş veriyi geri döndürüyoruz.
+    );
+    res.status(200).redirect(`/users/${req.params.id}`);
+  } catch (error) {
+    res.status(500).json({
+      succeded: false,
+      error,
+    });
+  }
+};
+
+export {
+  createUser,
+  loginUser,
+  getDashboardPage,
+  getAllUsers,
+  getAUser,
+  follow,
+  unfollow,
+};

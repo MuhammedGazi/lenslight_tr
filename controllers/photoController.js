@@ -16,6 +16,7 @@ const createPhoto = async (req, res) => {
       description: req.body.description,
       user: res.locals.user._id,
       url: result.secure_url,
+      image_id: result.public_id,
     });
     fs.unlinkSync(req.files.image.tempFilePath); //yerel dosyayı sil
     res.status(201).redirect("/users/dashboard");
@@ -32,11 +33,6 @@ const getAllPhotos = async (req, res) => {
     const photos = res.locals.user
       ? await Photo.find({ user: { $ne: res.locals.user._id } }) //res.locals.user._id ile giriş yapan kullanıcının id sini alıyoruz. eğer giriş yapan kullanıcı varsa onun id sini alıp onun dışındaki kullanıcıların fotoğraflarını çekiyoruz.
       : await Photo.find({}); //eğer giriş yapan kullanıcı yoksa tüm fotoğrafları çekiyoruz.
-    res.status(200).render("photos", {
-      photos,
-      link: "photos",
-    });
-
     res.status(200).render("photos", {
       photos,
       link: "photos",
@@ -63,4 +59,48 @@ const getAPhoto = async (req, res) => {
     });
   }
 };
-export { createPhoto, getAllPhotos, getAPhoto };
+const deletePhoto = async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+    const photoId = photo.image_id;
+    await cloudinary.uploader.destroy(photoId);
+    await Photo.findByIdAndRemove({ _id: req.params.id });
+    res.status(200).redirect("/users/dashboard");
+  } catch (error) {
+    res.status(500).json({
+      succeded: false,
+      error,
+    });
+  }
+};
+const updatePhoto = async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+    if (req.files) {
+      const photoId = photo.image_id;
+      await cloudinary.uploader.destroy(photoId);
+
+      const result = await cloudinary.uploader.upload(
+        req.files.image.tempFilePath,
+        {
+          use_filename: true,
+          folder: "lenslight_tr",
+        }
+      );
+      photo.url = result.secure_url;
+      photo.image_id = result.public_id;
+      fs.unlinkSync(req.files.image.tempFilePath);
+    }
+    photo.name = req.body.name;
+    photo.description = req.body.description;
+    photo.save();
+
+    res.status(200).redirect(`/photos/${req.params.id}`);
+  } catch (error) {
+    res.status(500).json({
+      succeded: false,
+      error,
+    });
+  }
+};
+export { createPhoto, getAllPhotos, getAPhoto, deletePhoto, updatePhoto };

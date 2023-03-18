@@ -22,6 +22,18 @@ const userSchema = new Schema(
       required: [true, "Email area is required"],
       minLength: [4, "At least 4 characters"],
     },
+    followers: [
+      {
+        type: Schema.Types.ObjectId, //type olarak user id si gireceğiz çünkü user ı takip ediyoruz
+        ref: "User", //ref olarak da user modelini belirtiyoruz
+      },
+    ],
+    followings: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true, //db de createdAt ve updatedAt otomatik olarak ekler
