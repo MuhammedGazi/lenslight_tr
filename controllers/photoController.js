@@ -48,9 +48,14 @@ const getAllPhotos = async (req, res) => {
 const getAPhoto = async (req, res) => {
   try {
     const photo = await Photo.findById({ _id: req.params.id }).populate("user"); //populate ile user modelindeki bilgileri çekiyoruz. bunuda photo.ejs deArtist: <%=photo.user.username %> olarak gösteriyoruz.
+    let isOwner = false;
+    if (res.locals.user) {
+      isOwner = photo.user.equals(res.locals.user._id); //eğer giriş yapan kullanıcı varsa ve giriş yapan kullanıcı ile fotoğrafın sahibi aynıysa isOwner true oluyor.
+    }
     res.status(200).render("photo", {
       photo,
       link: "photos",
+      isOwner,
     });
   } catch (error) {
     res.status(500).json({
@@ -87,9 +92,9 @@ const updatePhoto = async (req, res) => {
           folder: "lenslight_tr",
         }
       );
-      photo.url = result.secure_url;
-      photo.image_id = result.public_id;
-      fs.unlinkSync(req.files.image.tempFilePath);
+      photo.url = result.secure_url; //secure_url ile resmin url sini alıyoruz. result içindeki secure_url ile alıyoruz.
+      photo.image_id = result.public_id; //public_id ile resmin id sini alıyoruz.
+      fs.unlinkSync(req.files.image.tempFilePath); //yerel dosyayı sil
     }
     photo.name = req.body.name;
     photo.description = req.body.description;

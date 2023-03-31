@@ -6,7 +6,7 @@ const photoSchema = new Schema({
   name: {
     type: String,
     required: true,
-    trim: true,
+    trim: true, 
   },
   description: {
     type: String,
@@ -22,10 +22,10 @@ const photoSchema = new Schema({
     ref: "User", //User modeli ile ilişkilendirildi.
   },
   url: {
-    type: String,
+    type: String, //cloudinary url
     required: true,
   },
-  image_id: {
+  image_id: { //cloudinary image id
     type: String,
   },
 });
